@@ -1,0 +1,16 @@
+[
+  {
+    "id": "example",
+    "name": "Example",
+    "mod": "Example Mod",
+    "category": "Machine",
+    "chapter": 1,
+    "verified": false,
+    "description": "Description",
+    "recipe": [],
+    "uses": [],
+    "automation": "",
+    "location": "",
+    "issues": []
+  }
+]

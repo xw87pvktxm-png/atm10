@@ -1,0 +1,13 @@
+{
+  "version": "25.0",
+  "released_at": "2026-08-02",
+  "title": "Final Tested Edition",
+  "notes": [
+    "Consolidated final build based on the latest complete version",
+    "All 60 chapters verified",
+    "Supabase login fix included",
+    "All accumulated tools and importers included",
+    "Final QA: fixed Cloud/Updates tab event handlers and restored Supabase connection test button"
+  ],
+  "download_url": ""
+}
