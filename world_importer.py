@@ -17,14 +17,13 @@ import argparse
 import gzip
 import json
 import math
-import os
 from pathlib import Path
 import re
 import struct
 import sys
 import zlib
-from collections import Counter, defaultdict
-from typing import Any, BinaryIO
+from collections import Counter
+from typing import Any
 
 ORE_NAMES = {
     "allthemodium:allthemodium_ore",
@@ -126,29 +125,49 @@ def unsigned_long(v: int) -> int:
 
 
 def unpack_values(longs: list[int], count: int, bits: int) -> list[int]:
+    """Unpack palette indices from either supported Minecraft long-array layout.
+
+    Older chunks use a continuous bit stream whose values may cross 64-bit word
+    boundaries. Modern chunks pad each word and never split a value between two
+    words. The array length distinguishes the layouts whenever they differ.
+    """
+    if count < 0:
+        raise ValueError("count must not be negative")
+    if not 0 < bits <= 64:
+        raise ValueError("bits must be between 1 and 64")
     if not longs or bits <= 0:
         return [0] * count
+
     mask = (1 << bits) - 1
-    vals = []
-    # Modern palettes are packed without crossing long boundaries in many versions,
-    # but newer versions may use a continuous bit stream. This continuous decoder
-    # handles both common layouts well enough for map summaries.
-    bit_index = 0
     u = [unsigned_long(x) for x in longs]
-    for _ in range(count):
+    values_per_long = 64 // bits
+    padded_length = math.ceil(count / values_per_long)
+    dense_length = math.ceil(count * bits / 64)
+    uses_padding = padded_length != dense_length and len(u) == padded_length
+
+    if uses_padding:
+        return [
+            (u[index // values_per_long] >> ((index % values_per_long) * bits)) & mask
+            if index // values_per_long < len(u)
+            else 0
+            for index in range(count)
+        ]
+
+    values = []
+    for index in range(count):
+        bit_index = index * bits
         li = bit_index >> 6
         off = bit_index & 63
         if li >= len(u):
-            vals.append(0)
+            values.append(0)
         elif off + bits <= 64:
-            vals.append((u[li] >> off) & mask)
+            values.append((u[li] >> off) & mask)
         else:
             low = u[li] >> off
             high_bits = off + bits - 64
             high = (u[li+1] & ((1 << high_bits) - 1)) if li + 1 < len(u) else 0
-            vals.append((low | (high << (64-off))) & mask)
-        bit_index += bits
-    return vals
+            values.append((low | (high << (64-off))) & mask)
+    return values
 
 
 def palette_name(entry: Any) -> str:
@@ -157,13 +176,19 @@ def palette_name(entry: Any) -> str:
     return "unknown"
 
 
-def dominant_palette(palette: list[Any], data: list[int] | None, count: int) -> tuple[str, Counter]:
+def dominant_palette(
+    palette: list[Any],
+    data: list[int] | None,
+    count: int,
+    *,
+    minimum_bits: int = 1,
+) -> tuple[str, Counter[str]]:
     names = [palette_name(x) for x in palette]
     if not names:
         return "unknown", Counter()
     if len(names) == 1 or not data:
         return names[0], Counter({names[0]: count})
-    bits = max(1, math.ceil(math.log2(len(names))))
+    bits = max(minimum_bits, (len(names) - 1).bit_length())
     indices = unpack_values(data, count, bits)
     counts = Counter(names[i] if 0 <= i < len(names) else "unknown" for i in indices)
     return counts.most_common(1)[0][0], counts
@@ -212,14 +237,14 @@ def analyze_chunk(root: dict[str, Any], fallback_x: int, fallback_z: int) -> dic
         if isinstance(bs, dict):
             pal = bs.get("palette", []) or []
             dat = bs.get("data")
-            _, counts = dominant_palette(pal, dat, 4096)
+            _, counts = dominant_palette(pal, dat, 4096, minimum_bits=4)
             for name, n in counts.items():
                 if name in ORE_NAMES or name.endswith("_ore") or name.endswith(":ancient_debris"):
                     ore_counts[name] += n
         elif isinstance(sec.get("Palette"), list):
             pal = sec.get("Palette", [])
             dat = sec.get("BlockStates")
-            _, counts = dominant_palette(pal, dat, 4096)
+            _, counts = dominant_palette(pal, dat, 4096, minimum_bits=4)
             for name, n in counts.items():
                 if name in ORE_NAMES or name.endswith("_ore"):
                     ore_counts[name] += n
