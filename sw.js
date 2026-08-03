@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'atm10-guide-';
-const CACHE = `${CACHE_PREFIX}v27`;
+const CACHE = `${CACHE_PREFIX}v28`;
 const APP_SHELL = [
   './',
   './index.html',
