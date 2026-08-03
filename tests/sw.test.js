@@ -60,5 +60,5 @@ test('activation deletes only obsolete ATM10 caches', async () => {
   handlers.activate({ waitUntil: promise => { activation = promise; } });
   await activation;
 
-  assert.deepEqual(deletedCaches, ['atm10-guide-final-v25']);
+  assert.deepEqual(deletedCaches, ['atm10-guide-final-v25', 'atm10-guide-v26']);
 });
