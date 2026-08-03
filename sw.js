@@ -1,16 +1,78 @@
-const CACHE='atm10-guide-final-v25';
-const ASSETS=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./updates.json','./CLOUD_AND_UPDATES.md'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  if(new URL(e.request.url).pathname.endsWith('/updates.json')){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).then(resp=>{
-      const copy=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return resp;
-    }).catch(()=>caches.match(e.request)));
+const CACHE_PREFIX = 'atm10-guide-';
+const CACHE = `${CACHE_PREFIX}v26`;
+const APP_SHELL = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './updates.json',
+  './CLOUD_AND_UPDATES.md',
+];
+
+async function cacheSuccessfulResponse(request, response) {
+  if (response.ok && response.type === 'basic') {
+    const cache = await caches.open(CACHE);
+    await cache.put(request, response.clone());
+  }
+  return response;
+}
+
+async function fetchUpdate(request) {
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    return cacheSuccessfulResponse(request, response);
+  } catch {
+    return caches.match(request);
+  }
+}
+
+async function fetchAppResource(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(request);
+    return cacheSuccessfulResponse(request, response);
+  } catch {
+    if (request.mode === 'navigate') {
+      return caches.match('./index.html');
+    }
+    return undefined;
+  }
+}
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting()),
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys
+          .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE)
+          .map(key => caches.delete(key)),
+      ))
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (url.pathname.endsWith('/updates.json')) {
+    event.respondWith(fetchUpdate(request));
     return;
   }
-  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(resp=>{
-    const copy=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return resp;
-  }).catch(()=>caches.match('./index.html'))));
+
+  event.respondWith(fetchAppResource(request));
 });
