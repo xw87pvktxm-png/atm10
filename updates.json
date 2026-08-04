@@ -1,13 +1,16 @@
 {
-  "version": "25.0",
-  "released_at": "2026-08-02",
-  "title": "Final Tested Edition",
+  "version": "26.0",
+  "released_at": "2026-08-03",
+  "title": "Complete Companion Tools Edition",
   "notes": [
     "Consolidated final build based on the latest complete version",
     "All 60 chapters verified",
     "Supabase login fix included",
     "All accumulated tools and importers included",
-    "Final QA: fixed Cloud/Updates tab event handlers and restored Supabase connection test button"
+    "Final QA: fixed Cloud/Updates tab event handlers and restored Supabase connection test button",
+    "Added full boss and dimension trackers, 10 schematic dimension maps, extended 100% checklists and scalable encyclopedia validation",
+    "Added progression flowcharts, technology tree, comparisons, four new configurable calculators and complete backup/restore",
+    "Expanded the real-installation completion importer and kept the explicit no-AI-assistant requirement"
   ],
   "download_url": ""
 }
