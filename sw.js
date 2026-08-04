@@ -1,9 +1,10 @@
 const CACHE_PREFIX = 'atm10-guide-';
-const CACHE = `${CACHE_PREFIX}v28`;
+const CACHE = `${CACHE_PREFIX}v29`;
 const APP_SHELL = [
   './',
   './index.html',
   './chapter-guides.js',
+  './companion-data.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
